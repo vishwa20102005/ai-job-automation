@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Use VITE_API_URL if set, otherwise relative path to route through Vite proxy / Nginx
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export const apiClient = axios.create({
   baseURL: `${API_URL}/api/v1`,
@@ -34,9 +35,9 @@ apiClient.interceptors.response.use(
           const res = await axios.post(`${API_URL}/api/v1/auth/refresh`, {
             refresh_token: refreshToken,
           })
-          const { access_token, refresh_token } = res.data
+          const { access_token, refresh_token: newRefreshToken } = res.data
           localStorage.setItem('access_token', access_token)
-          localStorage.setItem('refresh_token', refresh_token)
+          localStorage.setItem('refresh_token', newRefreshToken)
           originalRequest.headers.Authorization = `Bearer ${access_token}`
           return apiClient(originalRequest)
         } catch {

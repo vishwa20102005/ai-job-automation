@@ -9,8 +9,8 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
 
-    # Database
-    DATABASE_URL: str = "postgresql://careerpilot:careerpilot123@localhost:5432/careerpilot"
+    # Database (defaults to local sqlite; can be overridden by PostgreSQL in .env / docker)
+    DATABASE_URL: str = "sqlite:///./careerpilot.db"
 
     # Security
     SECRET_KEY: str = "dev-secret-key-change-in-production-min-32-chars-here"

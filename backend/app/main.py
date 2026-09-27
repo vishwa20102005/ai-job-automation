@@ -2,11 +2,13 @@
 import logging
 import time
 import uuid
+from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 
@@ -34,7 +36,7 @@ def create_app() -> FastAPI:
     # Middleware
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=["*"],  # Allow all origins for live deployments
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -94,13 +96,30 @@ def create_app() -> FastAPI:
             "ai_provider": ai_service.active_provider,
         }
 
-    @app.get("/", tags=["Root"])
-    def root():
-        return {
-            "message": "CareerPilot AI API",
-            "version": settings.APP_VERSION,
-            "docs": "/api/docs",
-        }
+    # Mount Built Frontend SPA if present
+    frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+    if frontend_dist.exists():
+        assets_dir = frontend_dist / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def serve_spa(full_path: str):
+            # Don't intercept API or docs routes
+            if full_path.startswith(("api", "docs", "redoc", "health")):
+                raise HTTPException(status_code=404, detail="Not Found")
+            file_path = frontend_dist / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+            return FileResponse(frontend_dist / "index.html")
+    else:
+        @app.get("/", tags=["Root"])
+        def root():
+            return {
+                "message": "CareerPilot AI API",
+                "version": settings.APP_VERSION,
+                "docs": "/api/docs",
+            }
 
     return app
 
